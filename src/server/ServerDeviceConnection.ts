@@ -24,6 +24,8 @@ export class ServerDeviceConnection extends EventEmitter {
     private cache: Device[] = [];
     private deviceMap: Map<string, Device> = new Map();
     private clientMap: Map<string, AdbKitClient> = new Map();
+    private forwardDeviceMap: Map<string, string | undefined> = new Map();
+    private forwardDevicePort: string[] = ['8886', '8896', '8906', '8916', '8926'];
     private client: AdbKitClient = ADB.createClient();
     private tracker?: AdbKitTracker;
     private initialized: boolean = false;
@@ -69,6 +71,7 @@ export class ServerDeviceConnection extends EventEmitter {
                     if (this.clientMap.has(device.id)) {
                         this.clientMap.delete(device.id);
                     }
+                    this.forwardRemove(udid);
                 }
             }
             if (changes.changed.length) {
@@ -116,6 +119,7 @@ export class ServerDeviceConnection extends EventEmitter {
                 'product.model': '',
                 pid: -1,
                 ip: '0.0.0.0',
+                port: '8886',
                 state,
                 udid
             };
@@ -127,6 +131,7 @@ export class ServerDeviceConnection extends EventEmitter {
         const descriptor: Device = {
             pid: -1,
             ip: '127.0.0.1',
+            port: '8886',
             'ro.product.cpu.abi': props['ro.product.cpu.abi'],
             'product.manufacturer': props['ro.product.manufacturer'],
             'product.model': props['ro.product.model'],
@@ -140,6 +145,10 @@ export class ServerDeviceConnection extends EventEmitter {
             const buffer = await ADB.util.readAll(stream);
             const temp = buffer.toString().split(' ').filter((i: string) => !!i);
             descriptor.ip = temp[8];
+            if (!descriptor.ip) {
+                descriptor.ip = '127.0.0.1';
+                descriptor.port = await this.forwardDevice(descriptor.udid);
+            }
             let pid = await this.getPID(device);
             let count = 0;
             if (isNaN(pid)) {
@@ -160,6 +169,31 @@ export class ServerDeviceConnection extends EventEmitter {
             console.error(`[${udid}] error: ${e.message}`);
         }
         return descriptor;
+    }
+
+    private async forwardDevice(udid: string): Promise<string> {
+        const client = this.getOrCreateClient(udid);
+        await client.waitBootComplete(udid);
+
+        let fwdPort = this.forwardDeviceMap.get(udid);
+        if (!fwdPort) {
+            fwdPort = this.forwardDevicePort.shift() || '8886';
+        }
+        try {
+            await client.forward(udid, 'tcp:' + fwdPort, 'tcp:8886');
+            this.forwardDeviceMap.set(udid, fwdPort);
+        } catch (e) {
+            console.error(`[${udid}] error: ${e.message}`);
+        }
+        return fwdPort;
+    }
+
+    private async forwardRemove(udid: string): Promise<void> {
+        let fwdPort = this.forwardDeviceMap.get(udid);
+        if(fwdPort) {
+            this.forwardDevicePort.push(fwdPort);
+            this.forwardDeviceMap.delete(udid);
+        }
     }
 
     private async getPID(device: AdbKitDevice): Promise<number> {

@@ -25,6 +25,7 @@ export interface AdbKitClient {
     push(serial: string, contents: string | Stream, path: string, mode?: number, callback?: Callback<PushTransfer>): Promise<PushTransfer>;
     shell(serial: string, command: string, callback?: Callback<Socket>): Promise<Socket>;
     waitBootComplete(serial: string): Promise<string>;
+    forward(serial: string, local: string, remote: string): Promise<boolean>;
 }
 
 export interface AdbKitChangesSet {

@@ -7,5 +7,6 @@ export interface Device {
     udid: string;
     state: string;
     ip: string;
+    port: string;
     pid: number;
 }

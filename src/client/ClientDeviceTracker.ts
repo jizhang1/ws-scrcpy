@@ -150,7 +150,7 @@ export class ClientDeviceTracker extends NodeClient {
                         udid: device.udid,
                         decoder: decoderName,
                         ip: device.ip,
-                        port: SERVER_PORT.toString(10)
+                        port: device.port || SERVER_PORT.toString(10),
                     }, 'stream'));
                 }
                 row.append(decoderTd);

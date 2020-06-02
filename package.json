@@ -21,6 +21,7 @@
     "dist:start": "cd server && node index.js",
     "lint": "npx tslint --project .",
     "test": "echo \"Error: no test specified\" && exit 1"
+    ,"debug": "npm run clean && npm run dist && cd dist/server && node --nolazy --inspect --inspect-brk=9229 index.js"
   },
   "author": "Sergey Volkov <s.volkov@netris.ru>",
   "license": "MIT",
